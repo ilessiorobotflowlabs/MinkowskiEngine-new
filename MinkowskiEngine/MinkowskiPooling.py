@@ -34,7 +34,6 @@ from .MinkowskiCommon import (
     MinkowskiModuleBase,
     get_minkowski_function,
 )
-from .MinkowskiTensorField import TensorField
 
 
 class MinkowskiLocalPoolingFunction(Function):
@@ -720,7 +719,8 @@ class MinkowskiGlobalMaxPooling(MinkowskiGlobalPooling):
         coordinates: torch.IntTensor | CoordinateMapKey | SparseTensor = None,
     ):
         # Get a new coordinate map key or extract one from the coordinates
-        if isinstance(input, TensorField):
+        from .MinkowskiTensorField import TensorField as _TensorField
+        if isinstance(input, _TensorField):
             in_coordinate_map_key = input.coordinate_field_map_key
             out_coordinate_map_key = CoordinateMapKey(
                 input.coordinate_field_map_key.get_coordinate_size()
