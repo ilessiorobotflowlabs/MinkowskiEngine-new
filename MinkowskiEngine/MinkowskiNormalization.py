@@ -368,7 +368,7 @@ class MinkowskiInstanceNorm(MinkowskiModuleBase):
         self.weight = nn.Parameter(torch.ones(1, num_features))
         self.bias = nn.Parameter(torch.zeros(1, num_features))
         self.reset_parameters()
-        self.inst_norm = MinkowskiInstanceNormFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def __repr__(self):
         s = f"(nchannels={self.num_features})"
@@ -381,7 +381,7 @@ class MinkowskiInstanceNorm(MinkowskiModuleBase):
     def forward(self, input: SparseTensor):
         assert isinstance(input, SparseTensor)
 
-        output = self.inst_norm.apply(
+        output = MinkowskiInstanceNormFunction.apply(
             input.F, input.coordinate_map_key, None, input.coordinate_manager
         )
         output = output * self.weight + self.bias

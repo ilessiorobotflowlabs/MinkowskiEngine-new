@@ -11,7 +11,8 @@ build_tmp/
 objs/
 dist/
 MinkowskiEngine.egg-info/
-MinkowskiEngineBackend/
+# MinkowskiEngineBackend/*.so is covered by the *.so glob above
+# Keep MinkowskiEngineBackend/__init__.py tracked for pip install support
 .venv*/
 Untitled
 

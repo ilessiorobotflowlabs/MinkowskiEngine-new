@@ -144,7 +144,7 @@ class MinkowskiPoolingBase(MinkowskiModuleBase):
         self.kernel_generator = kernel_generator
         self.pooling_mode = pooling_mode
         self.dimension = dimension
-        self.pooling = MinkowskiLocalPoolingFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def forward(
         self,
@@ -165,7 +165,7 @@ class MinkowskiPoolingBase(MinkowskiModuleBase):
 
         # Get a new coordinate map key or extract one from the coordinates
         out_coordinate_map_key = _get_coordinate_map_key(input, coordinates)
-        outfeat = self.pooling.apply(
+        outfeat = MinkowskiLocalPoolingFunction.apply(
             input.F,
             self.pooling_mode,
             self.kernel_generator,
@@ -570,7 +570,7 @@ class MinkowskiPoolingTranspose(MinkowskiPoolingBase):
             is_transpose,
             dimension=dimension,
         )
-        self.pooling = MinkowskiLocalPoolingTransposeFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
 
 class MinkowskiGlobalPoolingFunction(Function):
@@ -645,7 +645,7 @@ class MinkowskiGlobalPooling(MinkowskiModuleBase):
         ), f"Mode must be an instance of PoolingMode. mode={mode}"
 
         self.pooling_mode = mode
-        self.pooling = MinkowskiGlobalPoolingFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def forward(
         self,
@@ -654,7 +654,7 @@ class MinkowskiGlobalPooling(MinkowskiModuleBase):
     ):
         # Get a new coordinate map key or extract one from the coordinates
         out_coordinate_map_key = _get_coordinate_map_key(input, coordinates)
-        output = self.pooling.apply(
+        output = MinkowskiGlobalPoolingFunction.apply(
             input.F,
             self.pooling_mode,
             input.coordinate_map_key,
@@ -728,7 +728,7 @@ class MinkowskiGlobalMaxPooling(MinkowskiGlobalPooling):
         else:
             in_coordinate_map_key = input.coordinate_map_key
             out_coordinate_map_key = _get_coordinate_map_key(input, coordinates)
-        output = self.pooling.apply(
+        output = MinkowskiGlobalPoolingFunction.apply(
             input.F,
             self.pooling_mode,
             in_coordinate_map_key,

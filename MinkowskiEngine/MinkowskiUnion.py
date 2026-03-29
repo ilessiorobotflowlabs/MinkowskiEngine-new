@@ -96,7 +96,7 @@ class MinkowskiUnion(Module):
 
     def __init__(self):
         super(MinkowskiUnion, self).__init__()
-        self.union = MinkowskiUnionFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def forward(self, *inputs):
         r"""
@@ -140,7 +140,7 @@ class MinkowskiUnion(Module):
         out_coordinate_map_key = CoordinateMapKey(
             in_coordinate_map_key.get_coordinate_size()
         )
-        output = self.union.apply(
+        output = MinkowskiUnionFunction.apply(
             [input.coordinate_map_key for input in inputs],
             out_coordinate_map_key,
             coordinate_manager,

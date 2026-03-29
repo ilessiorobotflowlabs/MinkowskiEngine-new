@@ -339,7 +339,7 @@ class TensorField(Tensor):
             )
             vals = torch.ones(N, dtype=self._F.dtype, device=self._F.device)
             size = torch.Size([N_rows, len(inverse_mapping)])
-            features = MinkowskiSPMMFunction().apply(
+            features = MinkowskiSPMMFunction.apply(
                 inverse_mapping, cols, vals, size, self._F
             )
         elif quantization_mode == SparseTensorQuantizationMode.UNWEIGHTED_AVERAGE:
@@ -350,7 +350,7 @@ class TensorField(Tensor):
                 device=inverse_mapping.device,
             )
             size = torch.Size([N_rows, len(inverse_mapping)])
-            features = MinkowskiSPMMAverageFunction().apply(
+            features = MinkowskiSPMMAverageFunction.apply(
                 inverse_mapping, cols, size, self._F
             )
         elif quantization_mode == SparseTensorQuantizationMode.RANDOM_SUBSAMPLE:
@@ -362,7 +362,7 @@ class TensorField(Tensor):
                 dtype=inverse_mapping.dtype,
                 device=inverse_mapping.device,
             )
-            features = MinkowskiDirectMaxPoolingFunction().apply(
+            features = MinkowskiDirectMaxPoolingFunction.apply(
                 in_map, inverse_mapping, self._F, N_rows
             )
         else:
@@ -395,7 +395,7 @@ class TensorField(Tensor):
         size = torch.Size([N_rows, N])
         # Save the results for slice
         self._splat[coordinate_map_key] = (tensor_map, field_map, weights, size)
-        features = MinkowskiSPMMFunction().apply(
+        features = MinkowskiSPMMFunction.apply(
             tensor_map, field_map, weights, size, self._F
         )
         return SparseTensor(

@@ -74,5 +74,7 @@ target-version = "py310"
 select = ["E", "F", "I", "B", "UP", "N", "C4"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
+testpaths = ["tests/python"]
+python_files = ["*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

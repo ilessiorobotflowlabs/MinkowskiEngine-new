@@ -276,10 +276,10 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
         self.kernel = Parameter(torch.empty(*kernel_shape))
         self.bias = Parameter(torch.empty(1, out_channels)) if bias else None
         self.convolution_mode = convolution_mode
-        self.conv = (
-            MinkowskiConvolutionTransposeFunction()
+        self.conv_fn = (
+            MinkowskiConvolutionTransposeFunction
             if is_transpose
-            else MinkowskiConvolutionFunction()
+            else MinkowskiConvolutionFunction
         )
 
     def forward(
@@ -309,7 +309,7 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
             out_coordinate_map_key = _get_coordinate_map_key(
                 input, coordinates, self.kernel_generator.expand_coordinates
             )
-            outfeat = self.conv.apply(
+            outfeat = self.conv_fn.apply(
                 input.F,
                 self.kernel,
                 self.kernel_generator,

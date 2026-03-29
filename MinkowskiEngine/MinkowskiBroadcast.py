@@ -101,12 +101,12 @@ class MinkowskiBroadcastBase(MinkowskiModuleBase):
 
         self.operation_type = operation_type
 
-        self.broadcast = MinkowskiBroadcastFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def forward(self, input: SparseTensor, input_glob: SparseTensor):
         assert isinstance(input, SparseTensor)
 
-        output = self.broadcast.apply(
+        output = MinkowskiBroadcastFunction.apply(
             input.F,
             input_glob.F,
             self.operation_type,

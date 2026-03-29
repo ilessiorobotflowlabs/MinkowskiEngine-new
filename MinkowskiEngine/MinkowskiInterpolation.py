@@ -100,7 +100,7 @@ class MinkowskiInterpolation(MinkowskiModuleBase):
         MinkowskiModuleBase.__init__(self)
         self.return_kernel_map = return_kernel_map
         self.return_weights = return_weights
-        self.interp = MinkowskiInterpolationFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def forward(
         self,
@@ -108,7 +108,7 @@ class MinkowskiInterpolation(MinkowskiModuleBase):
         tfield: torch.Tensor,
     ):
         # Get a new coordinate map key or extract one from the coordinates
-        out_feat, in_map, out_map, weights = self.interp.apply(
+        out_feat, in_map, out_map, weights = MinkowskiInterpolationFunction.apply(
             input.F,
             tfield,
             input.coordinate_map_key,

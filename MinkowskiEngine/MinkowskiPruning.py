@@ -79,7 +79,7 @@ class MinkowskiPruning(MinkowskiModuleBase):
 
     def __init__(self):
         super(MinkowskiPruning, self).__init__()
-        self.pruning = MinkowskiPruningFunction()
+        # Call .apply on class directly (not instance) for PyTorch 2.x+ compatibility
 
     def forward(self, input: SparseTensor, mask: torch.Tensor):
         r"""
@@ -110,7 +110,7 @@ class MinkowskiPruning(MinkowskiModuleBase):
         out_coords_key = CoordinateMapKey(
             input.coordinate_map_key.get_coordinate_size()
         )
-        output = self.pruning.apply(
+        output = MinkowskiPruningFunction.apply(
             input.F, mask, input.coordinate_map_key, out_coords_key, input._manager
         )
         return SparseTensor(
