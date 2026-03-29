@@ -25,11 +25,10 @@
 import os
 import numpy as np
 from collections.abc import Sequence
-from typing import Union, List, Tuple
 import warnings
 
 import torch
-from MinkowskiCommon import convert_to_int_list, convert_to_int_tensor
+from .MinkowskiCommon import convert_to_int_list, convert_to_int_tensor
 import MinkowskiEngineBackend._C as _C
 from MinkowskiEngineBackend._C import (
     CoordinateMapKey,
@@ -153,9 +152,9 @@ class CoordinateManager:
     def insert_and_map(
         self,
         coordinates: torch.Tensor,
-        tensor_stride: Union[int, Sequence, np.ndarray] = 1,
+        tensor_stride: int | Sequence | np.ndarray = 1,
         string_id: str = "",
-    ) -> Tuple[CoordinateMapKey, Tuple[torch.IntTensor, torch.IntTensor]]:
+    ) -> tuple[CoordinateMapKey, tuple[torch.IntTensor, torch.IntTensor]]:
         r"""create a new coordinate map and returns (key, (map, inverse_map)).
 
         :attr:`coordinates`: `torch.Tensor` (Int tensor. `CUDA` if
@@ -183,7 +182,7 @@ class CoordinateManager:
         coordinates: torch.Tensor,
         tensor_stride: Sequence,
         string_id: str = "",
-    ) -> Tuple[CoordinateMapKey, Tuple[torch.IntTensor, torch.IntTensor]]:
+    ) -> tuple[CoordinateMapKey, tuple[torch.IntTensor, torch.IntTensor]]:
         r"""create a new coordinate map and returns
 
         :attr:`coordinates`: `torch.FloatTensor` (`CUDA` if coordinate_map_type
@@ -208,9 +207,9 @@ class CoordinateManager:
     def field_to_sparse_insert_and_map(
         self,
         field_map_key: CoordinateMapKey,
-        sparse_tensor_stride: Union[int, Sequence, np.ndarray],
+        sparse_tensor_stride: int | Sequence | np.ndarray,
         sparse_tensor_string_id: str = "",
-    ) -> Tuple[CoordinateMapKey, Tuple[torch.IntTensor, torch.IntTensor]]:
+    ) -> tuple[CoordinateMapKey, tuple[torch.IntTensor, torch.IntTensor]]:
 
         r"""Create a sparse tensor coordinate map with the tensor stride.
 
@@ -254,7 +253,7 @@ class CoordinateManager:
     def stride(
         self,
         coordinate_map_key: CoordinateMapKey,
-        stride: Union[int, Sequence, np.ndarray, torch.Tensor],
+        stride: int | Sequence | np.ndarray | torch.Tensor,
         string_id: str = "",
     ) -> CoordinateMapKey:
         r"""Generate a new coordinate map and returns the key.
@@ -311,8 +310,8 @@ class CoordinateManager:
 
     def _get_coordinate_map_key(self, key_or_tensor_strides) -> CoordinateMapKey:
         r"""Helper function that retrieves the first coordinate map key for the given tensor stride."""
-        assert isinstance(key_or_tensor_strides, CoordinateMapKey) or isinstance(
-            key_or_tensor_strides, (Sequence, np.ndarray, torch.IntTensor, int)
+        assert isinstance(
+            key_or_tensor_strides, (CoordinateMapKey, Sequence, np.ndarray, torch.IntTensor, int)
         ), f"The input must be either a CoordinateMapKey or tensor_stride of type (int, list, tuple, array, Tensor). Invalid: {key_or_tensor_strides}"
         if isinstance(key_or_tensor_strides, CoordinateMapKey):
             # Do nothing and return the input
@@ -335,7 +334,7 @@ class CoordinateManager:
         return self._manager.origin_map_size()
 
     def get_unique_coordinate_map_key(
-        self, tensor_stride: Union[int, list]
+        self, tensor_stride: int | list
     ) -> CoordinateMapKey:
         """
         Returns a unique coordinate_map_key for a given tensor stride.

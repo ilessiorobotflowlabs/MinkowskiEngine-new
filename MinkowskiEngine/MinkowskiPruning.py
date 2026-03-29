@@ -27,12 +27,12 @@ from torch.nn import Module
 from torch.autograd import Function
 
 from MinkowskiEngineBackend._C import CoordinateMapKey
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiCommon import (
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiCommon import (
     MinkowskiModuleBase,
     get_minkowski_function,
 )
-from MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiCoordinateManager import CoordinateManager
 
 
 class MinkowskiPruningFunction(Function):

@@ -23,7 +23,7 @@
 # of the code.
 import torch
 
-from MinkowskiSparseTensor import SparseTensor
+from ..MinkowskiSparseTensor import SparseTensor
 
 
 def get_coords_map(x, y):

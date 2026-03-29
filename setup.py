@@ -1,292 +1,170 @@
-r"""
-Parse additional arguments along with the setup.py arguments such as install, build, distribute, sdist, etc.
+"""
+MinkowskiEngine build script.
 
+Supports CUDA and CPU-only builds via torch.utils.cpp_extension.
 
 Usage:
+    pip install -e .                           # auto-detect CUDA
+    pip install -e . --config-settings="--build-option=--cpu_only"
+    MAX_JOBS=8 pip install -e .                # control parallelism
 
-  python setup.py install <additional_flags>..<additional_flags> <additional_arg>=<value>..<additional_arg>=<value>
-
-  export CC=<C++ compiler>; python setup.py install <additional_flags>..<additional_flags> <additional_arg>=<value>..<additional_arg>=<value>
-
-
-Examples:
-
-  python setup.py install --force_cuda --cuda_home=/usr/local/cuda
-  export CC=g++7; python setup.py install --force_cuda --cuda_home=/usr/local/cuda
-
-
-Additional flags:
-
-  --cpu_only: Force building only a CPU version. However, if
-      torch.cuda.is_available() is False, it will default to CPU_ONLY.
-
-  --force_cuda: If torch.cuda.is_available() is false, but you have a working
-      nvcc, compile cuda files. --force_cuda will supercede --cpu_only.
-
-
-Additional arguments:
-
-  --blas=<value> : type of blas library to use for CPU matrix multiplications.
-      Options: [openblas, mkl, atlas, blas]. By default, it will use the first
-      numpy blas library it finds.
-
-  --cuda_home=<value> : a directory that contains <value>/bin/nvcc and
-      <value>/lib64/libcudart.so. By default, use
-      `torch.utils.cpp_extension._find_cuda_home()`.
-
-  --blas_include_dirs=<comma_separated_values> : additional include dirs. Only
-      activated when --blas=<value> is set.
-
-  --blas_library_dirs=<comma_separated_values> : additional library dirs. Only
-      activated when --blas=<value> is set.
+Environment variables:
+    FORCE_CUDA=1        Force CUDA build even if torch.cuda.is_available() is False
+    CPU_ONLY=1          Force CPU-only build
+    CUDA_HOME=/path     Override CUDA toolkit path
+    MAX_JOBS=N          Max parallel compilation threads (default: 12)
 """
-import sys
 
-if sys.version_info < (3, 6):
-    sys.stdout.write(
-        "Minkowski Engine requires Python 3.6 or higher. Please use anaconda https://www.anaconda.com/distribution/ for an isolated python environment.\n"
-    )
-    sys.exit(1)
-
-try:
-    import torch
-except ImportError:
-    raise ImportError("Pytorch not found. Please install pytorch first.")
-
-import codecs
 import os
 import re
-import subprocess
+import sys
+import tempfile
 import warnings
 from pathlib import Path
-from sys import argv, platform
 
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
-if platform == "win32":
+import torch
+
+if sys.platform == "win32":
     raise ImportError("Windows is currently not supported.")
-elif platform == "darwin":
-    # Set the distutils to use clang instead of g++ for valid std
-    if "CC" not in os.environ:
-        os.environ["CC"] = "/usr/local/opt/llvm/bin/clang"
-
-here = os.path.abspath(os.path.dirname(__file__))
 
 
-def read(*parts):
-    with codecs.open(os.path.join(here, *parts), "r") as fp:
-        return fp.read()
+HERE = Path(__file__).parent.resolve()
+SRC_PATH = HERE / "src"
+MAX_COMPILATION_THREADS = 12
 
 
-def find_version(*file_paths):
-    version_file = read(*file_paths)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
-    if version_match:
-        return version_match.group(1)
+def find_version():
+    init_file = (HERE / "MinkowskiEngine" / "__init__.py").read_text()
+    match = re.search(r'^__version__ = ["\']([^"\']*)["\']', init_file, re.M)
+    if match:
+        return match.group(1)
     raise RuntimeError("Unable to find version string.")
 
 
-def run_command(*args):
-    subprocess.check_call(args)
+def find_blas_libraries():
+    """Find BLAS library without using deprecated numpy.distutils."""
+    libraries = []
 
-
-def _argparse(pattern, argv, is_flag=True, is_list=False):
-    if is_flag:
-        found = pattern in argv
-        if found:
-            argv.remove(pattern)
-        return found, argv
-    else:
-        arr = [arg for arg in argv if pattern == arg.split("=")[0]]
-        if is_list:
-            if len(arr) == 0:  # not found
-                return False, argv
-            else:
-                assert "=" in arr[0], f"{arr[0]} requires a value."
-                argv.remove(arr[0])
-                val = arr[0].split("=")[1]
-                if "," in val:
-                    return val.split(","), argv
-                else:
-                    return [val], argv
+    # Check for common BLAS libraries via pkg-config or environment
+    blas_env = os.environ.get("BLAS", "").lower()
+    if blas_env:
+        if blas_env == "mkl":
+            libraries.append("mkl_rt")
+            return libraries, ["-DUSE_MKL"], ["-DUSE_MKL"]
         else:
-            if len(arr) == 0:  # not found
-                return False, argv
-            else:
-                assert "=" in arr[0], f"{arr[0]} requires a value."
-                argv.remove(arr[0])
-                return arr[0].split("=")[1], argv
+            libraries.append(blas_env)
+            return libraries, [], []
+
+    # Try to detect from numpy config (works with numpy 1.x and 2.x)
+    try:
+        import numpy as np
+
+        # NumPy 2.x: use numpy.show_config(mode='dicts')
+        if hasattr(np, "__config__") and hasattr(np.__config__, "blas_opt_info"):
+            info = np.__config__.blas_opt_info
+            if "libraries" in info:
+                return info["libraries"], [], []
+
+        # Try numpy.show_config for detection
+        # Fall through to manual detection
+    except Exception:
+        pass
+
+    # Manual detection: try linking against common BLAS libraries
+    blas_candidates = ["openblas", "blas", "flexiblas"]
+    for blas in blas_candidates:
+        # Check if library exists via ldconfig or common paths
+        lib_paths = [
+            f"/usr/lib/lib{blas}.so",
+            f"/usr/lib/x86_64-linux-gnu/lib{blas}.so",
+            f"/usr/lib64/lib{blas}.so",
+        ]
+        if any(Path(p).exists() for p in lib_paths):
+            libraries.append(blas)
+            return libraries, [], []
+
+    # Last resort: just use openblas and hope for the best
+    warnings.warn(
+        "Could not auto-detect BLAS library. Defaulting to openblas. "
+        "Set BLAS=openblas (or mkl/atlas) environment variable to override."
+    )
+    libraries.append("openblas")
+    return libraries, [], []
 
 
-run_command("rm", "-rf", "build")
-run_command("pip", "uninstall", "MinkowskiEngine", "-y")
+# Determine CPU_ONLY vs CUDA
+CPU_ONLY = os.environ.get("CPU_ONLY", "0") == "1"
+FORCE_CUDA = os.environ.get("FORCE_CUDA", "0") == "1"
 
-# For cpu only build
-CPU_ONLY, argv = _argparse("--cpu_only", argv)
-FORCE_CUDA, argv = _argparse("--force_cuda", argv)
+# Legacy argv-based flags (for backward compat with old install instructions)
+if "--cpu_only" in sys.argv:
+    CPU_ONLY = True
+    sys.argv.remove("--cpu_only")
+if "--force_cuda" in sys.argv:
+    FORCE_CUDA = True
+    sys.argv.remove("--force_cuda")
+
 if not torch.cuda.is_available() and not FORCE_CUDA:
     warnings.warn(
-        "torch.cuda.is_available() is False. MinkowskiEngine will compile with CPU_ONLY. Please use `--force_cuda` to compile with CUDA."
+        "torch.cuda.is_available() is False. Building CPU_ONLY. "
+        "Set FORCE_CUDA=1 to override."
     )
+    CPU_ONLY = True
 
-CPU_ONLY = CPU_ONLY or not torch.cuda.is_available()
 if FORCE_CUDA:
-    print("--------------------------------")
-    print("| FORCE_CUDA set                |")
-    print("--------------------------------")
     CPU_ONLY = False
+    print("--- FORCE_CUDA: building with CUDA support ---")
 
-# args with return value
-CUDA_HOME, argv = _argparse("--cuda_home", argv, False)
-BLAS, argv = _argparse("--blas", argv, False)
-BLAS_INCLUDE_DIRS, argv = _argparse("--blas_include_dirs", argv, False, is_list=True)
-BLAS_LIBRARY_DIRS, argv = _argparse("--blas_library_dirs", argv, False, is_list=True)
-MAX_COMPILATION_THREADS = 12
-
-Extension = CUDAExtension
-extra_link_args = []
-include_dirs = []
-libraries = []
+# Compiler flags
 CC_FLAGS = []
 NVCC_FLAGS = []
+libraries = []
+include_dirs = [
+    str(SRC_PATH),
+    str(SRC_PATH / "3rdparty"),
+    "/usr/include/x86_64-linux-gnu",  # cblas.h location on Ubuntu/Debian
+    "/usr/include",
+]
 
-if CPU_ONLY:
-    print("--------------------------------")
-    print("| WARNING: CPU_ONLY build set  |")
-    print("--------------------------------")
-    Extension = CppExtension
-else:
-    print("--------------------------------")
-    print("| CUDA compilation set         |")
-    print("--------------------------------")
-    # system python installation
+if not CPU_ONLY:
     libraries.append("cusparse")
 
-if not (CUDA_HOME is False):  # False when not set, str otherwise
-    print(f"Using CUDA_HOME={CUDA_HOME}")
-
-if sys.platform == "win32":
-    vc_version = os.getenv("VCToolsVersion", "")
-    if vc_version.startswith("14.16."):
-        CC_FLAGS += ["/sdl"]
-    else:
-        CC_FLAGS += ["/sdl", "/permissive-"]
-else:
+if sys.platform != "win32":
     CC_FLAGS += ["-fopenmp"]
 
-if "darwin" in platform:
+if sys.platform == "darwin":
     CC_FLAGS += ["-stdlib=libc++", "-std=c++17"]
 
 NVCC_FLAGS += ["--expt-relaxed-constexpr", "--expt-extended-lambda"]
-FAST_MATH, argv = _argparse("--fast_math", argv)
-if FAST_MATH:
-    NVCC_FLAGS.append("--use_fast_math")
 
-BLAS_LIST = ["flexiblas", "openblas", "mkl", "atlas", "blas"]
-if not (BLAS is False):  # False only when not set, str otherwise
-    assert BLAS in BLAS_LIST, f"Blas option {BLAS} not in valid options {BLAS_LIST}"
-    if BLAS == "mkl":
-        libraries.append("mkl_rt")
-        CC_FLAGS.append("-DUSE_MKL")
-        NVCC_FLAGS.append("-DUSE_MKL")
-    else:
-        libraries.append(BLAS)
-    if not (BLAS_INCLUDE_DIRS is False):
-        include_dirs += BLAS_INCLUDE_DIRS
-    if not (BLAS_LIBRARY_DIRS is False):
-        extra_link_args += [f"-Wl,-rpath,{BLAS_LIBRARY_DIRS}"]
-else:
-    # find the default BLAS library
-    import numpy.distutils.system_info as sysinfo
+# Redirect nvcc temp files to the large NVMe mount to avoid filling root filesystem.
+# nvcc respects TMPDIR env variable for its intermediate files.
+_nvcc_tmpdir = os.environ.get("NVCC_TMPDIR", tempfile.gettempdir())
+os.makedirs(_nvcc_tmpdir, exist_ok=True)
+os.environ.setdefault("TMPDIR", _nvcc_tmpdir)
 
-    # Search blas in this order
-    for blas in BLAS_LIST:
-        if "libraries" in sysinfo.get_info(blas):
-            BLAS = blas
-            libraries += sysinfo.get_info(blas)["libraries"]
-            break
-    else:
-        # BLAS not found
-        raise ImportError(
-            ' \
-\nBLAS not found from numpy.distutils.system_info.get_info. \
-\nPlease specify BLAS with: python setup.py install --blas=openblas" \
-\nfor more information, please visit https://github.com/NVIDIA/MinkowskiEngine/wiki/Installation'
-        )
+# BLAS
+blas_libs, blas_cc_flags, blas_nvcc_flags = find_blas_libraries()
+libraries += blas_libs
+CC_FLAGS += blas_cc_flags
+NVCC_FLAGS += blas_nvcc_flags
 
-print(f"\nUsing BLAS={BLAS}")
+print(f"BLAS libraries: {blas_libs}")
 
-# The Ninja cannot compile the files that have the same name with different
-# extensions correctly and uses the nvcc/CC based on the extension. Import a
-# .cpp file to the corresponding .cu file to force the nvcc compilation.
-SOURCE_SETS = {
-    "cpu": [
-        CppExtension,
-        [
-            "math_functions_cpu.cpp",
-            "coordinate_map_manager.cpp",
-            "convolution_cpu.cpp",
-            "convolution_transpose_cpu.cpp",
-            "local_pooling_cpu.cpp",
-            "local_pooling_transpose_cpu.cpp",
-            "global_pooling_cpu.cpp",
-            "broadcast_cpu.cpp",
-            "pruning_cpu.cpp",
-            "interpolation_cpu.cpp",
-            "quantization.cpp",
-            "direct_max_pool.cpp",
-        ],
-        ["pybind/minkowski.cpp"],
-        ["-DCPU_ONLY"],
-    ],
-    "gpu": [
-        CUDAExtension,
-        [
-            "math_functions_cpu.cpp",
-            "math_functions_gpu.cu",
-            "coordinate_map_manager.cu",
-            "coordinate_map_gpu.cu",
-            "convolution_kernel.cu",
-            "convolution_gpu.cu",
-            "convolution_transpose_gpu.cu",
-            "pooling_avg_kernel.cu",
-            "pooling_max_kernel.cu",
-            "local_pooling_gpu.cu",
-            "local_pooling_transpose_gpu.cu",
-            "global_pooling_gpu.cu",
-            "broadcast_kernel.cu",
-            "broadcast_gpu.cu",
-            "pruning_gpu.cu",
-            "interpolation_gpu.cu",
-            "spmm.cu",
-            "gpu.cu",
-            "quantization.cpp",
-            "direct_max_pool.cpp",
-        ],
-        ["pybind/minkowski.cu"],
-        [],
-    ],
-}
-
-debug, argv = _argparse("--debug", argv)
-
-HERE = Path(os.path.dirname(__file__)).absolute()
-SRC_PATH = HERE / "src"
-
+# Compiler override
 if "CC" in os.environ or "CXX" in os.environ:
-    # distutils only checks CC not CXX
     if "CXX" in os.environ:
         os.environ["CC"] = os.environ["CXX"]
         CC = os.environ["CXX"]
     else:
         CC = os.environ["CC"]
-    print(f"Using {CC} for c++ compilation")
-    if torch.__version__ < "1.7.0":
-        NVCC_FLAGS += [f"-ccbin={CC}"]
-else:
-    print("Using the default compiler")
+    print(f"Using compiler: {CC}")
 
+# Optimization flags
+debug = os.environ.get("DEBUG", "0") == "1"
 if debug:
     CC_FLAGS += ["-g", "-DDEBUG"]
     NVCC_FLAGS += ["-g", "-DDEBUG", "-Xcompiler=-fno-gnu-unique"]
@@ -294,72 +172,78 @@ else:
     CC_FLAGS += ["-O3"]
     NVCC_FLAGS += ["-O3", "-Xcompiler=-fno-gnu-unique"]
 
+# Parallelism
 if "MAX_JOBS" not in os.environ and os.cpu_count() > MAX_COMPILATION_THREADS:
-    # Clip the num compilation thread to 8
     os.environ["MAX_JOBS"] = str(MAX_COMPILATION_THREADS)
 
-target = "cpu" if CPU_ONLY else "gpu"
+# Source files
+CPU_SOURCES = [
+    "math_functions_cpu.cpp",
+    "coordinate_map_manager.cpp",
+    "convolution_cpu.cpp",
+    "convolution_transpose_cpu.cpp",
+    "local_pooling_cpu.cpp",
+    "local_pooling_transpose_cpu.cpp",
+    "global_pooling_cpu.cpp",
+    "broadcast_cpu.cpp",
+    "pruning_cpu.cpp",
+    "interpolation_cpu.cpp",
+    "quantization.cpp",
+    "direct_max_pool.cpp",
+]
 
-Extension = SOURCE_SETS[target][0]
-SRC_FILES = SOURCE_SETS[target][1]
-BIND_FILES = SOURCE_SETS[target][2]
-ARGS = SOURCE_SETS[target][3]
-CC_FLAGS += ARGS
-NVCC_FLAGS += ARGS
+GPU_SOURCES = [
+    "math_functions_cpu.cpp",
+    "math_functions_gpu.cu",
+    "coordinate_map_manager.cu",
+    "coordinate_map_gpu.cu",
+    "convolution_kernel.cu",
+    "convolution_gpu.cu",
+    "convolution_transpose_gpu.cu",
+    "pooling_avg_kernel.cu",
+    "pooling_max_kernel.cu",
+    "local_pooling_gpu.cu",
+    "local_pooling_transpose_gpu.cu",
+    "global_pooling_gpu.cu",
+    "broadcast_kernel.cu",
+    "broadcast_gpu.cu",
+    "pruning_gpu.cu",
+    "interpolation_gpu.cu",
+    "spmm.cu",
+    "gpu.cu",
+    "quantization.cpp",
+    "direct_max_pool.cpp",
+]
+
+if CPU_ONLY:
+    Extension = CppExtension
+    src_files = CPU_SOURCES
+    bind_file = "pybind/minkowski.cpp"
+    CC_FLAGS += ["-DCPU_ONLY"]
+    NVCC_FLAGS += ["-DCPU_ONLY"]
+    print("--- Building CPU_ONLY ---")
+else:
+    Extension = CUDAExtension
+    src_files = GPU_SOURCES
+    bind_file = "pybind/minkowski.cu"
+    print("--- Building with CUDA ---")
 
 ext_modules = [
     Extension(
         name="MinkowskiEngineBackend._C",
-        sources=[*[str(SRC_PATH / src_file) for src_file in SRC_FILES], *BIND_FILES],
+        sources=[
+            *[str(SRC_PATH / f) for f in src_files],
+            bind_file,
+        ],
         extra_compile_args={"cxx": CC_FLAGS, "nvcc": NVCC_FLAGS},
         libraries=libraries,
+        include_dirs=include_dirs,
     ),
 ]
 
-# Python interface
 setup(
     name="MinkowskiEngine",
-    version=find_version("MinkowskiEngine", "__init__.py"),
-    install_requires=["torch", "numpy"],
-    packages=["MinkowskiEngine", "MinkowskiEngine.utils", "MinkowskiEngine.modules"],
-    package_dir={"MinkowskiEngine": "./MinkowskiEngine"},
+    version=find_version(),
     ext_modules=ext_modules,
-    include_dirs=[str(SRC_PATH), str(SRC_PATH / "3rdparty"), *include_dirs],
     cmdclass={"build_ext": BuildExtension.with_options(use_ninja=True)},
-    author="Christopher Choy",
-    author_email="chrischoy@ai.stanford.edu",
-    description="a convolutional neural network library for sparse tensors",
-    long_description=read("README.md"),
-    long_description_content_type="text/markdown",
-    url="https://github.com/NVIDIA/MinkowskiEngine",
-    keywords=[
-        "pytorch",
-        "Minkowski Engine",
-        "Sparse Tensor",
-        "Convolutional Neural Networks",
-        "3D Vision",
-        "Deep Learning",
-    ],
-    zip_safe=False,
-    classifiers=[
-        # https: // pypi.org/classifiers/
-        "Environment :: Console",
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Developers",
-        "Intended Audience :: Other Audience",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
-        "Programming Language :: C++",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Topic :: Multimedia :: Graphics",
-        "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Topic :: Scientific/Engineering :: Mathematics",
-        "Topic :: Scientific/Engineering :: Physics",
-        "Topic :: Scientific/Engineering :: Visualization",
-    ],
-    python_requires=">=3.6",
 )

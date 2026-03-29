@@ -27,12 +27,11 @@ from collections import namedtuple
 from collections.abc import Sequence
 from functools import reduce
 import numpy as np
-from typing import Union
 
 import torch
-from MinkowskiCommon import convert_to_int_list
+from .MinkowskiCommon import convert_to_int_list
 from MinkowskiEngineBackend._C import CoordinateMapKey, RegionType
-from MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiCoordinateManager import CoordinateManager
 
 
 def get_kernel_volume(region_type, kernel_size, region_offset, axis_types, dimension):
@@ -104,12 +103,12 @@ def get_kernel_volume(region_type, kernel_size, region_offset, axis_types, dimen
 
 def convert_region_type(
     region_type: RegionType,
-    tensor_stride: Union[Sequence, np.ndarray, torch.IntTensor],
-    kernel_size: Union[Sequence, np.ndarray, torch.IntTensor],
-    up_stride: Union[Sequence, np.ndarray, torch.IntTensor],
-    dilation: Union[Sequence, np.ndarray, torch.IntTensor],
-    region_offset: Union[Sequence, np.ndarray, torch.IntTensor],
-    axis_types: Union[Sequence, np.ndarray, torch.IntTensor],
+    tensor_stride: Sequence | np.ndarray | torch.IntTensor,
+    kernel_size: Sequence | np.ndarray | torch.IntTensor,
+    up_stride: Sequence | np.ndarray | torch.IntTensor,
+    dilation: Sequence | np.ndarray | torch.IntTensor,
+    region_offset: Sequence | np.ndarray | torch.IntTensor,
+    axis_types: Sequence | np.ndarray | torch.IntTensor,
     dimension: int,
     center: bool = True,
 ):
@@ -378,7 +377,7 @@ class KernelRegion(
         )
 
     def __str__(self):
-        return "kernel_size:{self.kernel_size}, kernel_stride:{self.kernel_stride}, region_type:{self.region_type}"
+        return f"kernel_size:{self.kernel_size}, kernel_stride:{self.kernel_stride}, region_type:{self.region_type}"
 
 
 def save_ctx(

@@ -22,15 +22,13 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-from typing import Union
-
 import torch
 from torch.autograd import Function
 
 from MinkowskiEngineBackend._C import CoordinateMapKey
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiCoordinateManager import CoordinateManager
-from MinkowskiCommon import (
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiCommon import (
     MinkowskiModuleBase,
     get_minkowski_function,
 )

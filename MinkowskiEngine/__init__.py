@@ -22,14 +22,10 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-__version__ = "0.5.4"
+__version__ = "0.6.0"
 
 import os
-import sys
 import warnings
-
-file_dir = os.path.dirname(__file__)
-sys.path.append(file_dir)
 
 # Force OMP_NUM_THREADS setup
 if os.cpu_count() > 16 and "OMP_NUM_THREADS" not in os.environ:
@@ -48,7 +44,7 @@ if os.cpu_count() > 16 and "OMP_NUM_THREADS" not in os.environ:
 # Must be imported first to load all required shared libs
 import torch
 
-from diagnostics import print_diagnostics
+from .diagnostics import print_diagnostics
 
 from MinkowskiEngineBackend._C import (
     MinkowskiAlgorithm,
@@ -64,14 +60,14 @@ from MinkowskiEngineBackend._C import (
     get_gpu_memory_info,
 )
 
-from MinkowskiKernelGenerator import (
+from .MinkowskiKernelGenerator import (
     KernelRegion,
     KernelGenerator,
     convert_region_type,
     get_kernel_volume,
 )
 
-from MinkowskiTensor import (
+from .MinkowskiTensor import (
     SparseTensorOperationMode,
     SparseTensorQuantizationMode,
     set_sparse_tensor_operation_mode,
@@ -81,23 +77,23 @@ from MinkowskiTensor import (
     clear_global_coordinate_manager,
 )
 
-from MinkowskiSparseTensor import SparseTensor
+from .MinkowskiSparseTensor import SparseTensor
 
-from MinkowskiTensorField import TensorField
+from .MinkowskiTensorField import TensorField
 
-from MinkowskiCommon import (
+from .MinkowskiCommon import (
     convert_to_int_tensor,
     MinkowskiModuleBase,
 )
 
-from MinkowskiCoordinateManager import (
+from .MinkowskiCoordinateManager import (
     set_memory_manager_backend,
     set_gpu_allocator,
     CoordsManager,
     CoordinateManager,
 )
 
-from MinkowskiConvolution import (
+from .MinkowskiConvolution import (
     MinkowskiConvolutionFunction,
     MinkowskiConvolution,
     MinkowskiConvolutionTransposeFunction,
@@ -106,9 +102,9 @@ from MinkowskiConvolution import (
 )
 
 
-from MinkowskiChannelwiseConvolution import MinkowskiChannelwiseConvolution
+from .MinkowskiChannelwiseConvolution import MinkowskiChannelwiseConvolution
 
-from MinkowskiPooling import (
+from .MinkowskiPooling import (
     MinkowskiLocalPoolingFunction,
     MinkowskiSumPooling,
     MinkowskiAvgPooling,
@@ -123,7 +119,7 @@ from MinkowskiPooling import (
     MinkowskiDirectMaxPoolingFunction,
 )
 
-from MinkowskiBroadcast import (
+from .MinkowskiBroadcast import (
     MinkowskiBroadcastFunction,
     MinkowskiBroadcastAddition,
     MinkowskiBroadcastMultiplication,
@@ -131,7 +127,7 @@ from MinkowskiBroadcast import (
     MinkowskiBroadcastConcatenation,
 )
 
-from MinkowskiNonlinearity import (
+from .MinkowskiNonlinearity import (
     MinkowskiELU,
     MinkowskiHardshrink,
     MinkowskiHardsigmoid,
@@ -163,7 +159,7 @@ from MinkowskiNonlinearity import (
     MinkowskiSinusoidal,
 )
 
-from MinkowskiNormalization import (
+from .MinkowskiNormalization import (
     MinkowskiBatchNorm,
     MinkowskiSyncBatchNorm,
     MinkowskiInstanceNorm,
@@ -172,20 +168,20 @@ from MinkowskiNormalization import (
 )
 
 
-from MinkowskiPruning import MinkowskiPruning, MinkowskiPruningFunction
+from .MinkowskiPruning import MinkowskiPruning, MinkowskiPruningFunction
 
-from MinkowskiUnion import MinkowskiUnion, MinkowskiUnionFunction
+from .MinkowskiUnion import MinkowskiUnion, MinkowskiUnionFunction
 
-from MinkowskiInterpolation import (
+from .MinkowskiInterpolation import (
     MinkowskiInterpolation,
     MinkowskiInterpolationFunction,
 )
 
-from MinkowskiNetwork import MinkowskiNetwork
+from .MinkowskiNetwork import MinkowskiNetwork
 
-import MinkowskiOps
+from . import MinkowskiOps
 
-from MinkowskiOps import (
+from .MinkowskiOps import (
     MinkowskiLinear,
     MinkowskiToSparseTensor,
     MinkowskiToDenseTensor,
@@ -202,15 +198,15 @@ from MinkowskiOps import (
     dense_coordinates,
 )
 
-from MinkowskiOps import _sum as sum
+from .MinkowskiOps import _sum as sum
 
-import MinkowskiFunctional
+from . import MinkowskiFunctional
 
-import MinkowskiEngine.utils as utils
+from . import utils
 
-import MinkowskiEngine.modules as modules
+from . import modules
 
-from sparse_matrix_functions import (
+from .sparse_matrix_functions import (
     spmm,
     MinkowskiSPMMFunction,
     MinkowskiSPMMAverageFunction,

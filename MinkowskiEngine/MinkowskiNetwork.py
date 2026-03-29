@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 
 import torch.nn as nn
 
-from MinkowskiSparseTensor import SparseTensor
+from .MinkowskiSparseTensor import SparseTensor
 
 
 class MinkowskiNetwork(nn.Module, ABC):

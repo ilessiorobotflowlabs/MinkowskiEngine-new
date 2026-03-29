@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ATen/core/DeprecatedTypeProperties.h>
 #include <ATen/core/Tensor.h>
 #include <ATen/record_function.h>
 #include <c10/macros/Macros.h>

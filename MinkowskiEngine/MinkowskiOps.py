@@ -22,18 +22,17 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-from typing import Union
 import numpy as np
 
 import torch
 from torch.nn.modules import Module
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiTensor import (
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiTensor import (
     COORDINATE_MANAGER_DIFFERENT_ERROR,
     COORDINATE_KEY_DIFFERENT_ERROR,
 )
-from MinkowskiTensorField import TensorField
-from MinkowskiCommon import MinkowskiModuleBase
+from .MinkowskiTensorField import TensorField
+from .MinkowskiCommon import MinkowskiModuleBase
 from MinkowskiEngineBackend._C import CoordinateMapKey
 
 
@@ -42,7 +41,7 @@ class MinkowskiLinear(Module):
         super(MinkowskiLinear, self).__init__()
         self.linear = torch.nn.Linear(in_features, out_features, bias=bias)
 
-    def forward(self, input: Union[SparseTensor, TensorField]):
+    def forward(self, input: SparseTensor | TensorField):
         output = self.linear(input.F)
         if isinstance(input, TensorField):
             return TensorField(
@@ -59,11 +58,7 @@ class MinkowskiLinear(Module):
             )
 
     def __repr__(self):
-        s = "(in_features={}, out_features={}, bias={})".format(
-            self.linear.in_features,
-            self.linear.out_features,
-            self.linear.bias is not None,
-        )
+        s = f"(in_features={self.linear.in_features}, out_features={self.linear.out_features}, bias={self.linear.bias is not None})"
         return self.__class__.__name__ + s
 
 
@@ -243,7 +238,7 @@ def var(*sparse_tensors):
     return _tuple_operator(*sparse_tensors, operator=lambda xs: return_var(xs))
 
 
-def dense_coordinates(shape: Union[list, torch.Size]):
+def dense_coordinates(shape: list | torch.Size):
     """
     coordinates = dense_coordinates(tensor.shape)
     """
@@ -393,7 +388,7 @@ class MinkowskiToSparseTensor(MinkowskiModuleBase):
         self.remove_zeros = remove_zeros
         self.coordinates = coordinates
 
-    def forward(self, input: Union[TensorField, torch.Tensor]):
+    def forward(self, input: TensorField | torch.Tensor):
         if isinstance(input, TensorField):
             return input.sparse()
         elif isinstance(input, torch.Tensor):

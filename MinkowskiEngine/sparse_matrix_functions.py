@@ -63,15 +63,7 @@ def spmm(
             (rows, cols),
             0,
         ).long()
-        torchSparseTensor = None
-        if vals.dtype == torch.float64:
-            torchSparseTensor = torch.sparse.DoubleTensor
-        elif vals.dtype == torch.float32:
-            torchSparseTensor = torch.sparse.FloatTensor
-        else:
-            raise ValueError(f"Unsupported data type: {vals.dtype}")
-
-        sp = torchSparseTensor(COO, vals, size)
+        sp = torch.sparse_coo_tensor(COO, vals, size)
         result = sp.matmul(mat)
 
     return result
@@ -83,7 +75,7 @@ def spmm_average(
     size: torch.Size,
     mat: torch.Tensor,
     cuda_spmm_alg: int = 1,
-) -> (torch.Tensor, torch.Tensor, torch.Tensor):
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
     assert len(rows) == len(cols), "Invalid length"
     if mat.is_cuda:
@@ -108,14 +100,7 @@ def spmm_average(
         _, inverse_ind, counts = torch.unique(rows, return_counts=True, return_inverse=True)
         vals = (1 / counts[inverse_ind]).to(mat.dtype)
         # fmt: on
-        torchSparseTensor = None
-        if mat.dtype == torch.float64:
-            torchSparseTensor = torch.sparse.DoubleTensor
-        elif mat.dtype == torch.float32:
-            torchSparseTensor = torch.sparse.FloatTensor
-        else:
-            raise ValueError(f"Unsupported data type: {mat.dtype}")
-        sp = torchSparseTensor(COO, vals, size)
+        sp = torch.sparse_coo_tensor(COO, vals, size)
         result = sp.matmul(mat)
 
     return result, COO, vals

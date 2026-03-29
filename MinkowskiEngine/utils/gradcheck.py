@@ -21,18 +21,16 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
+from collections.abc import Callable
+
 import torch
-
-assert torch.__version__ >= "1.7.0", "Gradcheck requires pytorch 1.7 or higher"
-
 from torch.types import _TensorOrTensors
-from typing import Callable, Union, Optional
 
 from torch.autograd.gradcheck import gradcheck as _gradcheck
 
 
 def gradcheck(
-    func: Callable[..., Union[_TensorOrTensors]],  # See Note [VarArg of Tensors]
+    func: Callable[..., _TensorOrTensors],  # See Note [VarArg of Tensors]
     inputs: _TensorOrTensors,
     eps: float = 1e-6,
     atol: float = 1e-5,

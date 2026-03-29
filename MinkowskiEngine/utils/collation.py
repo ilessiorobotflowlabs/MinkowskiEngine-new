@@ -75,9 +75,7 @@ def batched_coordinates(coords, dtype=torch.int32, device=None):
         if dtype == torch.int32:
             if isinstance(cs, np.ndarray):
                 cs = torch.from_numpy(np.floor(cs))
-            elif not (
-                isinstance(cs, torch.IntTensor) or isinstance(cs, torch.LongTensor)
-            ):
+            elif not isinstance(cs, (torch.IntTensor, torch.LongTensor)):
                 cs = cs.floor()
 
             cs = cs.int()

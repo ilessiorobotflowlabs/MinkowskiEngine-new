@@ -1,12 +1,11 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 
 from collections import OrderedDict
 import numpy as np
 
-import MinkowskiEngine as ME
-from MinkowskiSparseTensor import SparseTensor
+from MinkowskiEngineBackend._C import MinkowskiAlgorithm
+from ..MinkowskiSparseTensor import SparseTensor
 
 
 def summary(model, summary_input):
@@ -31,7 +30,7 @@ def size2list(size: torch.Size) -> list:
 
 def get_hash_occupancy_ratio(minkowski_tensor):
     alg = minkowski_tensor.coordinate_manager.minkowski_algorithm
-    if alg == ME.MinkowskiAlgorithm.SPEED_OPTIMIZED:
+    if alg == MinkowskiAlgorithm.SPEED_OPTIMIZED:
         return 25;
     else:
         return 50;
@@ -44,7 +43,7 @@ def minkowski_summary_string(model, summary_input):
             class_name = str(module.__class__).split(".")[-1].split("'")[0]
             module_idx = len(summary)
 
-            m_key = "%s-%i" % (class_name, module_idx + 1)
+            m_key = f"{class_name}-{module_idx + 1}"
             summary[m_key] = OrderedDict()
 
             # for the weight pruned model, print the sparsity information
@@ -68,10 +67,7 @@ def minkowski_summary_string(model, summary_input):
                 params += module.bias.numel()
             summary[m_key]["nb_params"] = params
 
-        if (
-            not isinstance(module, nn.Sequential)
-            and not isinstance(module, nn.ModuleList)
-        ):
+        if not isinstance(module, (nn.Sequential, nn.ModuleList)):
             hooks.append(module.register_forward_hook(hook))
 
     # create properties
@@ -108,7 +104,7 @@ def minkowski_summary_string(model, summary_input):
 
         total_output += np.prod(summary[layer]["output_shape"])
         if "trainable" in summary[layer]:
-            if summary[layer]["trainable"] == True:
+            if summary[layer]["trainable"]:
                 trainable_params += summary[layer]["nb_params"]
         summary_str += line_new + "\n"
 
@@ -122,15 +118,14 @@ def minkowski_summary_string(model, summary_input):
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "================================================================" + "\n"
-    summary_str += "Total params: {0:,}".format(total_params) + "\n"
-    summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
-    summary_str += "Non-trainable params: {0:,}".format(total_params -
-                                                        trainable_params) + "\n"
+    summary_str += f"Total params: {total_params:,}\n"
+    summary_str += f"Trainable params: {trainable_params:,}\n"
+    summary_str += f"Non-trainable params: {total_params - trainable_params:,}\n"
     summary_str += "----------------------------------------------------------------" + "\n"
-    summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"
-    summary_str += "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
-    summary_str += "Params size (MB): %0.2f" % total_params_size + "\n"
-    summary_str += "Estimated Total Size (MB): %0.2f" % total_size + "\n"
+    summary_str += f"Input size (MB): {total_input_size:.2f}\n"
+    summary_str += f"Forward/backward pass size (MB): {total_output_size:.2f}\n"
+    summary_str += f"Params size (MB): {total_params_size:.2f}\n"
+    summary_str += f"Estimated Total Size (MB): {total_size:.2f}\n"
     summary_str += "----------------------------------------------------------------" + "\n"
     # return summary
     return summary_str, (total_params, trainable_params)

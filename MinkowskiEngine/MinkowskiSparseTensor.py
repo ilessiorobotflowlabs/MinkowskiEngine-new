@@ -26,14 +26,14 @@ import os
 import torch
 import warnings
 
-from MinkowskiCommon import convert_to_int_list, StrideType
+from .MinkowskiCommon import convert_to_int_list, StrideType
 from MinkowskiEngineBackend._C import (
     CoordinateMapKey,
     CoordinateMapType,
     GPUMemoryAllocatorType,
     MinkowskiAlgorithm,
 )
-from MinkowskiTensor import (
+from .MinkowskiTensor import (
     SparseTensorQuantizationMode,
     SparseTensorOperationMode,
     Tensor,
@@ -41,8 +41,8 @@ from MinkowskiTensor import (
     global_coordinate_manager,
     set_global_coordinate_manager,
 )
-from MinkowskiCoordinateManager import CoordinateManager
-from sparse_matrix_functions import MinkowskiSPMMFunction, MinkowskiSPMMAverageFunction
+from .MinkowskiCoordinateManager import CoordinateManager
+from .sparse_matrix_functions import MinkowskiSPMMFunction, MinkowskiSPMMAverageFunction
 
 
 class SparseTensor(Tensor):
@@ -387,19 +387,9 @@ class SparseTensor(Tensor):
 
         def torch_sparse_Tensor(coords, feats, size=None):
             if size is None:
-                if feats.dtype == torch.float64:
-                    return torch.sparse.DoubleTensor(coords, feats)
-                elif feats.dtype == torch.float32:
-                    return torch.sparse.FloatTensor(coords, feats)
-                else:
-                    raise ValueError("Feature type not supported.")
+                return torch.sparse_coo_tensor(coords, feats)
             else:
-                if feats.dtype == torch.float64:
-                    return torch.sparse.DoubleTensor(coords, feats, size)
-                elif feats.dtype == torch.float32:
-                    return torch.sparse.FloatTensor(coords, feats, size)
-                else:
-                    raise ValueError("Feature type not supported.")
+                return torch.sparse_coo_tensor(coords, feats, size)
 
         # Use int tensor for all operations
         tensor_stride = torch.IntTensor(self.tensor_stride)

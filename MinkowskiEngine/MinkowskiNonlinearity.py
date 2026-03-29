@@ -21,14 +21,12 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-from typing import Union
-
 import torch
 import torch.nn as nn
 
-from MinkowskiCommon import MinkowskiModuleBase
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiTensorField import TensorField
+from .MinkowskiCommon import MinkowskiModuleBase
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiTensorField import TensorField
 
 
 class MinkowskiNonlinearityBase(MinkowskiModuleBase):
@@ -181,7 +179,7 @@ class MinkowskiSinusoidal(MinkowskiModuleBase):
         self.bias = nn.Parameter(torch.rand(1, out_channel))
         self.coef = nn.Parameter(torch.rand(1, out_channel))
 
-    def forward(self, input: Union[SparseTensor, TensorField]):
+    def forward(self, input: SparseTensor | TensorField):
 
         out_F = torch.sin(input.F.mm(self.kernel) + self.bias) * self.coef
 

@@ -25,8 +25,7 @@ import torch
 import numpy as np
 from collections.abc import Sequence
 import MinkowskiEngineBackend._C as MEB
-from typing import Union, Tuple
-from MinkowskiCommon import convert_to_int_list
+from ..MinkowskiCommon import convert_to_int_list
 
 
 def fnv_hash_vec(arr):
@@ -90,8 +89,8 @@ def quantize(coords):
        >>> print(coords[unique_map[inverse_map]] == coords)  # True, ..., True
 
     """
-    assert isinstance(coords, np.ndarray) or isinstance(
-        coords, torch.Tensor
+    assert isinstance(
+        coords, (np.ndarray, torch.Tensor)
     ), "Invalid coords type"
     if isinstance(coords, np.ndarray):
         assert (
@@ -104,8 +103,8 @@ def quantize(coords):
 
 
 def quantize_label(coords, labels, ignore_label):
-    assert isinstance(coords, np.ndarray) or isinstance(
-        coords, torch.Tensor
+    assert isinstance(
+        coords, (np.ndarray, torch.Tensor)
     ), "Invalid coords type"
     if isinstance(coords, np.ndarray):
         assert isinstance(labels, np.ndarray)
@@ -266,9 +265,13 @@ def sparse_quantize(
     else:
         discrete_coordinates = discrete_coordinates.int()
 
-    if (type(device) == str and device == "cpu") or (type(device) == torch.device and device.type == "cpu"):
+    if isinstance(device, str):
+        device = torch.device(device)
+    elif not isinstance(device, torch.device):
+        raise ValueError("Invalid device. Only `cpu`, `cuda` or torch.device supported.")
+    if device.type == "cpu":
         manager = MEB.CoordinateMapManagerCPU()
-    elif (type(device) == str and "cuda" in device) or (type(device) == torch.device and device.type == "cuda"):
+    elif device.type == "cuda":
         manager = MEB.CoordinateMapManagerGPU_c10()
     else:
         raise ValueError("Invalid device. Only `cpu`, `cuda` or torch.device supported.")
@@ -334,8 +337,8 @@ def sparse_quantize(
 
 def unique_coordinate_map(
     coordinates: torch.Tensor,
-    tensor_stride: Union[int, Sequence, np.ndarray] = 1,
-) -> Tuple[torch.IntTensor, torch.IntTensor]:
+    tensor_stride: int | Sequence | np.ndarray = 1,
+) -> tuple[torch.IntTensor, torch.IntTensor]:
     r"""Returns the unique indices and the inverse indices of the coordinates.
 
     :attr:`coordinates`: `torch.Tensor` (Int tensor. `CUDA` if

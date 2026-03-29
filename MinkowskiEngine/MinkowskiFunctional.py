@@ -23,8 +23,8 @@
 # of the code.
 import torch.nn.functional as F
 
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiTensorField import TensorField
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiTensorField import TensorField
 
 
 def _wrap_tensor(input, F):

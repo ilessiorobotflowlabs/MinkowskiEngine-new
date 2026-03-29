@@ -23,15 +23,14 @@
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
 import math
-from typing import Union
 
 import torch
 from torch.nn import Parameter
 
-from MinkowskiSparseTensor import SparseTensor
+from .MinkowskiSparseTensor import SparseTensor
 from MinkowskiEngineBackend._C import CoordinateMapKey, RegionType
-from MinkowskiCommon import MinkowskiModuleBase
-from MinkowskiKernelGenerator import KernelGenerator
+from .MinkowskiCommon import MinkowskiModuleBase
+from .MinkowskiKernelGenerator import KernelGenerator
 
 
 class MinkowskiChannelwiseConvolution(MinkowskiModuleBase):
@@ -133,16 +132,15 @@ class MinkowskiChannelwiseConvolution(MinkowskiModuleBase):
 
         self.kernel_shape = (kernel_generator.kernel_volume, self.in_channels)
 
-        Tensor = torch.FloatTensor
-        self.kernel = Parameter(Tensor(*self.kernel_shape))
-        self.bias = Parameter(Tensor(1, in_channels)) if bias else None
+        self.kernel = Parameter(torch.empty(*self.kernel_shape))
+        self.bias = Parameter(torch.empty(1, in_channels)) if bias else None
 
         self.reset_parameters()
 
     def forward(
         self,
         input: SparseTensor,
-        coords: Union[torch.IntTensor, CoordinateMapKey, SparseTensor] = None,
+        coords: torch.IntTensor | CoordinateMapKey | SparseTensor = None,
     ):
         r"""
         :attr:`input` (`MinkowskiEngine.SparseTensor`): Input sparse tensor to apply a
@@ -201,15 +199,10 @@ class MinkowskiChannelwiseConvolution(MinkowskiModuleBase):
                 self.bias.data.uniform_(-stdv, stdv)
 
     def __repr__(self):
-        s = "(in={}, region_type={}, ".format(
-            self.in_channels, self.kernel_generator.region_type
-        )
+        s = f"(in={self.in_channels}, region_type={self.kernel_generator.region_type}, "
         if self.kernel_generator.region_type in [RegionType.CUSTOM]:
-            s += "kernel_volume={}, ".format(self.kernel_generator.kernel_volume)
+            s += f"kernel_volume={self.kernel_generator.kernel_volume}, "
         else:
-            s += "kernel_size={}, ".format(self.kernel_generator.kernel_size)
-        s += "stride={}, dilation={})".format(
-            self.kernel_generator.kernel_stride,
-            self.kernel_generator.kernel_dilation,
-        )
+            s += f"kernel_size={self.kernel_generator.kernel_size}, "
+        s += f"stride={self.kernel_generator.kernel_stride}, dilation={self.kernel_generator.kernel_dilation})"
         return self.__class__.__name__ + s

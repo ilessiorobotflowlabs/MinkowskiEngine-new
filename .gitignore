@@ -4,8 +4,13 @@
 *.swp
 *.swn
 *.pyc
+__pycache__/
 
 build/
 objs/
 dist/
 MinkowskiEngine.egg-info/
+.venv/
+
+# Claude Code
+.claude/settings.local.json

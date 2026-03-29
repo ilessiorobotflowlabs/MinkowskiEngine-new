@@ -34,6 +34,7 @@
 #include <thrust/functional.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/reduce.h>
+#include <thrust/sequence.h>
 #include <thrust/sort.h>
 
 #include "allocators.cuh"

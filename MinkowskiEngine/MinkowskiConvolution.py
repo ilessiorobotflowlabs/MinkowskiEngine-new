@@ -23,20 +23,19 @@
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
 import math
-from typing import Union
 
 import torch
 from torch.autograd import Function
 from torch.nn import Parameter
 
 from MinkowskiEngineBackend._C import CoordinateMapKey, RegionType, ConvolutionMode
-from MinkowskiSparseTensor import SparseTensor, _get_coordinate_map_key
-from MinkowskiCommon import (
+from .MinkowskiSparseTensor import SparseTensor, _get_coordinate_map_key
+from .MinkowskiCommon import (
     MinkowskiModuleBase,
     get_minkowski_function,
 )
-from MinkowskiCoordinateManager import CoordinateManager
-from MinkowskiKernelGenerator import KernelGenerator
+from .MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiKernelGenerator import KernelGenerator
 
 
 class MinkowskiConvolutionFunction(Function):
@@ -261,7 +260,6 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
         self.dimension = dimension
         self.use_mm = False  # use matrix multiplication when kernel_volume is 1
 
-        Tensor = torch.FloatTensor
         if (
             self.kernel_generator.kernel_volume == 1
             and self.kernel_generator.requires_strided_coordinates
@@ -275,8 +273,8 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
                 self.out_channels,
             )
 
-        self.kernel = Parameter(Tensor(*kernel_shape))
-        self.bias = Parameter(Tensor(1, out_channels)) if bias else None
+        self.kernel = Parameter(torch.empty(*kernel_shape))
+        self.bias = Parameter(torch.empty(1, out_channels)) if bias else None
         self.convolution_mode = convolution_mode
         self.conv = (
             MinkowskiConvolutionTransposeFunction()
@@ -287,7 +285,7 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
     def forward(
         self,
         input: SparseTensor,
-        coordinates: Union[torch.Tensor, CoordinateMapKey, SparseTensor] = None,
+        coordinates: torch.Tensor | CoordinateMapKey | SparseTensor = None,
     ):
         r"""
         :attr:`input` (`MinkowskiEngine.SparseTensor`): Input sparse tensor to apply a
@@ -340,20 +338,12 @@ class MinkowskiConvolutionBase(MinkowskiModuleBase):
                 self.bias.data.uniform_(-stdv, stdv)
 
     def __repr__(self):
-        s = "(in={}, out={}, ".format(
-            self.in_channels,
-            self.out_channels,
-        )
+        s = f"(in={self.in_channels}, out={self.out_channels}, "
         if self.kernel_generator.region_type in [RegionType.CUSTOM]:
-            s += "region_type={}, kernel_volume={}, ".format(
-                self.kernel_generator.region_type, self.kernel_generator.kernel_volume
-            )
+            s += f"region_type={self.kernel_generator.region_type}, kernel_volume={self.kernel_generator.kernel_volume}, "
         else:
-            s += "kernel_size={}, ".format(self.kernel_generator.kernel_size)
-        s += "stride={}, dilation={})".format(
-            self.kernel_generator.kernel_stride,
-            self.kernel_generator.kernel_dilation,
-        )
+            s += f"kernel_size={self.kernel_generator.kernel_size}, "
+        s += f"stride={self.kernel_generator.kernel_stride}, dilation={self.kernel_generator.kernel_dilation})"
         return self.__class__.__name__ + s
 
 

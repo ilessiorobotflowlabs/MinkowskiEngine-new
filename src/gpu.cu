@@ -96,8 +96,10 @@ const char *cusparseGetErrorString(cusparseStatus_t error) {
 }
 
 cusparseHandle_t getCurrentCUDASparseHandle() {
-  cusparseHandle_t handle;
-  CUSPARSE_CHECK(cusparseCreate(&handle));
+  thread_local cusparseHandle_t handle = nullptr;
+  if (handle == nullptr) {
+    CUSPARSE_CHECK(cusparseCreate(&handle));
+  }
   return handle;
 }
 

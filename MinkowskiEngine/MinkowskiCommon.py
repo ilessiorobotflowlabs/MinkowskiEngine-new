@@ -24,7 +24,6 @@
 # of the code.
 from collections.abc import Sequence
 import numpy as np
-from typing import Union
 
 import torch
 
@@ -33,11 +32,11 @@ from torch.nn import Module
 import MinkowskiEngineBackend._C as MEB
 
 
-StrideType = Union[int, Sequence, np.ndarray, torch.IntTensor]
+StrideType = int | Sequence | np.ndarray | torch.IntTensor
 
 
 def convert_to_int_list(
-    arg: Union[int, Sequence, np.ndarray, torch.Tensor], dimension: int
+    arg: int | Sequence | np.ndarray | torch.Tensor, dimension: int
 ):
     if isinstance(arg, list):
         assert len(arg) == dimension
@@ -55,7 +54,7 @@ def convert_to_int_list(
 
 
 def convert_to_int_tensor(
-    arg: Union[int, Sequence, np.ndarray, torch.IntTensor], dimension: int
+    arg: int | Sequence | np.ndarray | torch.IntTensor, dimension: int
 ):
     if isinstance(arg, torch.IntTensor):
         assert arg.numel() == dimension
@@ -73,11 +72,11 @@ def convert_to_int_tensor(
 
 
 def prep_args(
-    tensor_stride: Union[int, Sequence, np.ndarray, torch.IntTensor],
-    stride: Union[int, Sequence, np.ndarray, torch.IntTensor],
-    kernel_size: Union[int, Sequence, np.ndarray, torch.IntTensor],
-    dilation: Union[int, Sequence, np.ndarray, torch.IntTensor],
-    region_type: Union[int, MEB.RegionType],
+    tensor_stride: int | Sequence | np.ndarray | torch.IntTensor,
+    stride: int | Sequence | np.ndarray | torch.IntTensor,
+    kernel_size: int | Sequence | np.ndarray | torch.IntTensor,
+    dilation: int | Sequence | np.ndarray | torch.IntTensor,
+    region_type: int | MEB.RegionType,
     D=-1,
 ):
     assert torch.prod(

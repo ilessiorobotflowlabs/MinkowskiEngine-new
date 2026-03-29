@@ -1,5 +1,37 @@
 # Change Log
 
+## [0.6.0] - 2026-03-29
+
+MinkowskiEngine-new: modernized fork by ilessiorobotflowlabs.
+
+### Added
+
+- Modern `pyproject.toml` build system with setuptools backend
+- `uv` package manager support for fast, reliable installs
+- Python 3.10, 3.11, and 3.12 support
+- PyTorch 2.x support (tested with 2.5+ and 2.10+)
+- CUDA 12.x support
+- Environment variable build controls: `CPU_ONLY`, `FORCE_CUDA`
+
+### Changed
+
+- Replaced deprecated `numpy.distutils` with modern setuptools-based build
+- Replaced deprecated `DeprecatedTypeProperties.h` usage with current PyTorch C++ APIs
+- Replaced `at::cuda::getCurrentCUDASparseHandle` with custom cuSPARSE handle manager (fixes handle leak)
+- Converted all intra-package imports to proper relative imports
+- Minimum Python version raised to 3.10
+- Minimum PyTorch version raised to 2.0
+- Minimum CUDA version raised to 12.x for GPU builds
+- Updated `TORCH_CUDA_ARCH_LIST` defaults for modern GPU architectures
+
+### Removed
+
+- Dropped Python 3.6-3.9 support
+- Dropped PyTorch < 2.0 support
+- Dropped CUDA 10.x and 11.x from default build targets
+- Removed legacy `conda` installation path from documentation
+- Removed deprecated `numpy.distutils` dependency
+
 ## [0.5.5]
 
 - MKL compilation fix (#358)

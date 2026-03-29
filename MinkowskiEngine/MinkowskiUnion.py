@@ -26,8 +26,8 @@ from torch.nn import Module
 from torch.autograd import Function
 
 from MinkowskiEngineBackend._C import CoordinateMapKey
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiCoordinateManager import CoordinateManager
 
 
 class MinkowskiUnionFunction(Function):

@@ -24,18 +24,17 @@
 import os
 import numpy as np
 from collections.abc import Sequence
-from typing import Union, List, Tuple
 
 import torch
-from MinkowskiCommon import convert_to_int_list, StrideType
+from .MinkowskiCommon import convert_to_int_list, StrideType
 from MinkowskiEngineBackend._C import (
     GPUMemoryAllocatorType,
     MinkowskiAlgorithm,
     CoordinateMapKey,
     CoordinateMapType,
 )
-from MinkowskiCoordinateManager import CoordinateManager
-from MinkowskiTensor import (
+from .MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiTensor import (
     SparseTensorOperationMode,
     SparseTensorQuantizationMode,
     Tensor,
@@ -45,9 +44,9 @@ from MinkowskiTensor import (
     COORDINATE_MANAGER_DIFFERENT_ERROR,
     COORDINATE_KEY_DIFFERENT_ERROR,
 )
-from MinkowskiSparseTensor import SparseTensor
-from sparse_matrix_functions import MinkowskiSPMMFunction, MinkowskiSPMMAverageFunction
-from MinkowskiPooling import MinkowskiDirectMaxPoolingFunction
+from .MinkowskiSparseTensor import SparseTensor
+from .sparse_matrix_functions import MinkowskiSPMMFunction, MinkowskiSPMMAverageFunction
+from .MinkowskiPooling import MinkowskiDirectMaxPoolingFunction
 
 
 def create_splat_coordinates(coordinates: torch.Tensor) -> torch.Tensor:
@@ -285,7 +284,7 @@ class TensorField(Tensor):
 
     def sparse(
         self,
-        tensor_stride: Union[int, Sequence, np.array] = 1,
+        tensor_stride: int | Sequence | np.ndarray = 1,
         coordinate_map_key: CoordinateMapKey = None,
         quantization_mode: SparseTensorQuantizationMode = None,
     ):

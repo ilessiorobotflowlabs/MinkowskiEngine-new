@@ -22,21 +22,19 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
-from typing import Union
-
 import torch
 from torch.autograd import Function
 
 import MinkowskiEngineBackend._C as _C
 from MinkowskiEngineBackend._C import CoordinateMapKey, PoolingMode
-from MinkowskiSparseTensor import SparseTensor, _get_coordinate_map_key
-from MinkowskiCoordinateManager import CoordinateManager
-from MinkowskiKernelGenerator import KernelGenerator, save_ctx
-from MinkowskiCommon import (
+from .MinkowskiSparseTensor import SparseTensor, _get_coordinate_map_key
+from .MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiKernelGenerator import KernelGenerator, save_ctx
+from .MinkowskiCommon import (
     MinkowskiModuleBase,
     get_minkowski_function,
 )
-import MinkowskiEngine as ME
+from .MinkowskiTensorField import TensorField
 
 
 class MinkowskiLocalPoolingFunction(Function):
@@ -152,7 +150,7 @@ class MinkowskiPoolingBase(MinkowskiModuleBase):
     def forward(
         self,
         input: SparseTensor,
-        coordinates: Union[torch.IntTensor, CoordinateMapKey, SparseTensor] = None,
+        coordinates: torch.IntTensor | CoordinateMapKey | SparseTensor = None,
     ):
         r"""
         :attr:`input` (`MinkowskiEngine.SparseTensor`): Input sparse tensor to apply a
@@ -184,11 +182,7 @@ class MinkowskiPoolingBase(MinkowskiModuleBase):
         )
 
     def __repr__(self):
-        s = "(kernel_size={}, stride={}, dilation={})".format(
-            self.kernel_generator.kernel_size,
-            self.kernel_generator.kernel_stride,
-            self.kernel_generator.kernel_dilation,
-        )
+        s = f"(kernel_size={self.kernel_generator.kernel_size}, stride={self.kernel_generator.kernel_stride}, dilation={self.kernel_generator.kernel_dilation})"
         return self.__class__.__name__ + s
 
 
@@ -657,7 +651,7 @@ class MinkowskiGlobalPooling(MinkowskiModuleBase):
     def forward(
         self,
         input: SparseTensor,
-        coordinates: Union[torch.IntTensor, CoordinateMapKey, SparseTensor] = None,
+        coordinates: torch.IntTensor | CoordinateMapKey | SparseTensor = None,
     ):
         # Get a new coordinate map key or extract one from the coordinates
         out_coordinate_map_key = _get_coordinate_map_key(input, coordinates)
@@ -723,10 +717,10 @@ class MinkowskiGlobalMaxPooling(MinkowskiGlobalPooling):
     def forward(
         self,
         input,
-        coordinates: Union[torch.IntTensor, CoordinateMapKey, SparseTensor] = None,
+        coordinates: torch.IntTensor | CoordinateMapKey | SparseTensor = None,
     ):
         # Get a new coordinate map key or extract one from the coordinates
-        if isinstance(input, ME.TensorField):
+        if isinstance(input, TensorField):
             in_coordinate_map_key = input.coordinate_field_map_key
             out_coordinate_map_key = CoordinateMapKey(
                 input.coordinate_field_map_key.get_coordinate_size()

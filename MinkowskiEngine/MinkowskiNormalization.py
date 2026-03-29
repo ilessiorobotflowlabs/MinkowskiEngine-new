@@ -27,11 +27,11 @@ import torch.nn as nn
 from torch.nn import Module
 from torch.autograd import Function
 
-from MinkowskiSparseTensor import SparseTensor
-from MinkowskiTensorField import TensorField
+from .MinkowskiSparseTensor import SparseTensor
+from .MinkowskiTensorField import TensorField
 
-from MinkowskiPooling import MinkowskiGlobalAvgPooling
-from MinkowskiBroadcast import (
+from .MinkowskiPooling import MinkowskiGlobalAvgPooling
+from .MinkowskiBroadcast import (
     MinkowskiBroadcastAddition,
     MinkowskiBroadcastMultiplication,
 )
@@ -40,9 +40,9 @@ from MinkowskiEngineBackend._C import (
     BroadcastMode,
     PoolingMode,
 )
-from MinkowskiCoordinateManager import CoordinateManager
+from .MinkowskiCoordinateManager import CoordinateManager
 
-from MinkowskiCommon import (
+from .MinkowskiCommon import (
     MinkowskiModuleBase,
     get_minkowski_function,
 )
@@ -88,13 +88,7 @@ class MinkowskiBatchNorm(Module):
             )
 
     def __repr__(self):
-        s = "({}, eps={}, momentum={}, affine={}, track_running_stats={})".format(
-            self.bn.num_features,
-            self.bn.eps,
-            self.bn.momentum,
-            self.bn.affine,
-            self.bn.track_running_stats,
-        )
+        s = f"({self.bn.num_features}, eps={self.bn.eps}, momentum={self.bn.momentum}, affine={self.bn.affine}, track_running_stats={self.bn.track_running_stats})"
         return self.__class__.__name__ + s
 
 
