@@ -1,30 +1,29 @@
-# Use use previous versions, modify these variables
-# ARG PYTORCH="1.9.0"
-# ARG CUDA="11.1"
-
-ARG PYTORCH="1.12.0"
-ARG CUDA="11.3"
-ARG CUDNN="8"
+ARG PYTORCH="2.5.1"
+ARG CUDA="12.1.0"
+ARG CUDNN="9"
 
 FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
 
 ##############################################
-# You should modify this to match your GPU compute capability
-# ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0+PTX"
-ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 6.2 7.0 7.2 7.5 8.0 8.6"
+# Modify to match your GPU compute capability
+# Ada Lovelace (L4, RTX 4090): 8.9
+# Ampere (A100, A10): 8.0
+# Hopper (H100): 9.0
+ENV TORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 8.6 8.9 9.0"
 ##############################################
 
 ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
 
 # Install dependencies
-RUN apt-get update
-RUN apt-get install -y git ninja-build cmake build-essential libopenblas-dev \
-    xterm xauth openssh-server tmux wget mate-desktop-environment-core
+RUN apt-get update && \
+    apt-get install -y git ninja-build cmake build-essential libopenblas-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/*
+ENV MAX_JOBS=8
 
-# For faster build, use more jobs.
-ENV MAX_JOBS=4
-RUN git clone --recursive "https://github.com/NVIDIA/MinkowskiEngine"
-RUN cd MinkowskiEngine; python setup.py install --force_cuda --blas=openblas
+RUN pip install uv
+
+RUN git clone --recursive "https://github.com/ilessiorobotflowlabs/MinkowskiEngine-new" && \
+    cd MinkowskiEngine-new && \
+    uv pip install --system -e .

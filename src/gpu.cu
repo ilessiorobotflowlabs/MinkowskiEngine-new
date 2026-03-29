@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
+#include <unordered_map>
 
 #include "gpu.cuh"
 
@@ -96,11 +97,19 @@ const char *cusparseGetErrorString(cusparseStatus_t error) {
 }
 
 cusparseHandle_t getCurrentCUDASparseHandle() {
-  thread_local cusparseHandle_t handle = nullptr;
-  if (handle == nullptr) {
-    CUSPARSE_CHECK(cusparseCreate(&handle));
+  // Per-(thread, device) handle map — safe for multi-GPU DataParallel.
+  // cusparseCreate binds to the current device, so we must cache per-device.
+  thread_local std::unordered_map<int, cusparseHandle_t> handles;
+  int device;
+  CUDA_CHECK(cudaGetDevice(&device));
+  auto it = handles.find(device);
+  if (it == handles.end()) {
+    cusparseHandle_t h;
+    CUSPARSE_CHECK(cusparseCreate(&h));
+    handles[device] = h;
+    return h;
   }
-  return handle;
+  return it->second;
 }
 
 static std::string format_size(uint64_t size) {
